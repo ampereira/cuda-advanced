@@ -7,8 +7,6 @@
 // - Devices with HyperQ will run up to 32 kernels simultaneously.
 
 #include <stdio.h>
-#include <helper_functions.h>
-#include <helper_cuda.h>
 
 const char *sSDKsample = "hyperQ";
 
@@ -84,37 +82,7 @@ int main(int argc, char **argv)
     printf("starting %s...\n", sSDKsample);
 
     // Get number of streams (if overridden on the command line)
-    if (checkCmdLineFlag(argc, (const char **)argv, "nstreams"))
-    {
-        nstreams = getCmdLineArgumentInt(argc, (const char **)argv, "nstreams");
-    }
-
-    // Use command-line specified CUDA device, otherwise use device with
-    // highest Gflops/s
-    cuda_device = findCudaDevice(argc, (const char **)argv);
-
-    // Get device properties
-    cudaDeviceProp deviceProp;
-    cudaGetDevice(&cuda_device);
-    cudaGetDeviceProperties(&deviceProp, cuda_device);
-
-    // HyperQ is available in devices of Compute Capability 3.5 and higher
-    if (deviceProp.major < 3 || (deviceProp.major == 3 && deviceProp.minor < 5))
-    {
-        if (deviceProp.concurrentKernels == 0)
-        {
-            printf("> GPU does not support concurrent kernel execution (SM 3.5 or higher required)\n");
-            printf("  CUDA kernel runs will be serialized\n");
-        }
-        else
-        {
-            printf("> GPU does not support HyperQ\n");
-            printf("  CUDA kernel runs will have limited concurrency\n");
-        }
-    }
-
-    printf("> Detected Compute SM %d.%d hardware with %d multi-processors\n",
-           deviceProp.major, deviceProp.minor, deviceProp.multiProcessorCount);
+        nstreams = 16;    }
 // *************************************************************************************
 // *************************************************************************************
 
@@ -137,8 +105,6 @@ int main(int argc, char **argv)
 
     // Target time per kernel is kernel_time ms, clockRate is in KHz
     // Target number of clocks = target time * clock frequency
-    clock_t time_clocks = (clock_t)(kernel_time * deviceProp.clockRate);
-    clock_t total_clocks = 0;
 
     // Start the clock
     cudaEventRecord(start_event, 0);
@@ -172,7 +138,6 @@ int main(int argc, char **argv)
     printf("Expected time for fully concurrent execution of %d sets of kernels is approx. %.3fs\n", nstreams, 2 * kernel_time / 1000.0f);
     printf("Measured time for sample = %.3fs\n", elapsed_time / 1000.0f);
 
-    bool bTestResult  = (a[0] >= total_clocks);
 // *************************************************************************************
 // *************************************************************************************
 
@@ -187,7 +152,7 @@ int main(int argc, char **argv)
     // profiled. Calling cudaDeviceReset causes all profile data to be
     // flushed before the application exits
     cudaDeviceReset();
-    exit(bTestResult ? EXIT_SUCCESS : EXIT_FAILURE);
+    exit(true);
 // *************************************************************************************
 // *************************************************************************************
 }
